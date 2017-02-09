@@ -1,0 +1,24 @@
+[submodule "c_modules/file"]
+	path = c_modules/file
+	url = git@github.com:opencosmos/file
+[submodule "c_modules/cstd"]
+	path = c_modules/cstd
+	url = git@github.com:opencosmos/cstd
+[submodule "c_modules/relay"]
+	path = c_modules/relay
+	url = git@github.com:opencosmos/relay
+[submodule "c_modules/ctcp"]
+	path = c_modules/ctcp
+	url = git@github.com:opencosmos/ctcp
+[submodule "c_modules/wildstr"]
+	path = c_modules/wildstr
+	url = git@github.com:opencosmos/wildstr
+[submodule "c_modules/fixedstr"]
+	path = c_modules/fixedstr
+	url = git@github.com:opencosmos/fixedstr
+[submodule "c_modules/cstruct"]
+	path = c_modules/cstruct
+	url = git@github.com:opencosmos/cstruct
+[submodule "c_modules/resolve"]
+	path = c_modules/resolve
+	url = git@github.com:opencosmos/resolve
