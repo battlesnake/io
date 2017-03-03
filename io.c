@@ -50,13 +50,13 @@ enum io_format io_format_val(const char *str)
 
 static bool set_nonblock(int fd)
 {
-	int fl = fcntl(F_GETFL, fd);
+	int fl = fcntl(fd, F_GETFL);
 	if (fl < 0) {
 		log_sysfail("fcntl", "F_GETFL, %d", fd);
 		return false;
 	}
 	fl |= O_NONBLOCK;
-	if (fcntl(F_SETFL, fd, fl) == -1) {
+	if (fcntl(fd, F_SETFL, fl) == -1) {
 		log_sysfail("fcntl", "F_SETFL, %d, 0x%x", fd, fl);
 		return false;
 	}
