@@ -117,8 +117,9 @@ fail:
 	return false;
 }
 
-static struct relay_packet *io_intf_recv_raw(struct io_intf *inst)
+static bool io_intf_recv_raw(struct io_intf *inst, struct relay_packet **out)
 {
+	*out = NULL;
 	struct relay_packet *res = malloc(sizeof(*res) + inst->raw_block_size + 1);
 	memset(res, 0, sizeof(*res));
 	res->data = (void *) (res + 1);
@@ -128,23 +129,25 @@ static struct relay_packet *io_intf_recv_raw(struct io_intf *inst)
 			log_error("Failed to read from raw source");
 		}
 		free(res);
-		return NULL;
+		return false;
 	}
 	res->length = read;
 	res->data[res->length] = 0;
 	if (inst->type_in != NULL) {
 		strncpy(res->type, inst->type_in, RELAY_TYPE_LENGTH);
 	}
-	return res;
+	*out = res;
+	return true;
 }
 
-static struct relay_packet *io_intf_recv_packet(struct io_intf *inst)
+static bool io_intf_recv_packet(struct io_intf *inst, struct relay_packet **out)
 {
+	*out = NULL;
 	size_t length;
 	void *buf = file_source_read_packet(inst->fi, &length);
 	if (buf == NULL) {
 		log_error("Failed to read from packet source");
-		return NULL;
+		return false;
 	}
 	struct relay_packet *res = malloc(sizeof(*res) + length + 1);
 	memset(res, 0, sizeof(*res));
@@ -156,37 +159,41 @@ static struct relay_packet *io_intf_recv_packet(struct io_intf *inst)
 		strncpy(res->type, inst->type_in, RELAY_TYPE_LENGTH);
 	}
 	free(buf);
-	return res;
+	*out = res;
+	return true;
 }
 
-static struct relay_packet *io_intf_recv_relay(struct io_intf *inst)
+static bool io_intf_recv_relay(struct io_intf *inst, struct relay_packet **out)
 {
-	struct relay_packet *packet;
+	*out = NULL;
 	while (true) {
-		packet = relay_client_recv_packet(&inst->ri);
-		if (packet == NULL) {
+		struct relay_packet *packet;
+		if (!relay_client_recv_packet(&inst->ri, &packet)) {
 			log_error("Failed to read from relay source");
-			return NULL;
+			return false;
+		}
+		if (packet == NULL) {
+			return true;
 		}
 		if (inst->local == NULL || strcmp(inst->local, packet->local) == 0) {
-			break;
+			*out = packet;
+			return true;
 		}
 		if (!io_intf_forward(inst, packet)) {
 			free(packet);
-			return NULL;
+			return false;
 		}
 		free(packet);
 	}
-	return packet;
 }
 
-struct relay_packet *io_intf_recv(struct io_intf *inst)
+bool io_intf_recv(struct io_intf *inst, struct relay_packet **out)
 {
 	switch (inst->fmti) {
-	case io_null: return NULL;
-	case io_raw: return io_intf_recv_raw(inst);
-	case io_packet: return io_intf_recv_packet(inst);
-	case io_relay: return io_intf_recv_relay(inst);
+	case io_null: *out = NULL; return true;
+	case io_raw: return io_intf_recv_raw(inst, out);
+	case io_packet: return io_intf_recv_packet(inst, out);
+	case io_relay: return io_intf_recv_relay(inst, out);
 	}
 	return NULL;
 }
@@ -272,8 +279,12 @@ static enum io_handler_result handle_packet(struct io_intf *inst, const struct r
 
 bool io_intf_handle(struct io_intf *inst, const struct io_handler handlers[], size_t handler_count)
 {
-	struct relay_packet *rp = io_intf_recv(inst);
-	if (!rp) {
+	struct relay_packet *rp;
+	if (!io_intf_recv(inst, &rp)) {
+		log_error("Failed to receive packet");
+		return false;
+	}
+	if (rp == NULL) {
 		return false;
 	}
 	switch (handle_packet(inst, rp, handlers, handlers + handler_count)) {

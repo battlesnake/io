@@ -74,8 +74,10 @@ bool io_intf_init(struct io_intf *inst, const char *local, struct file_source *f
 /*
  * Returned packet will always have null terminator appended without affecting
  * apparent packet length, i.e. null set at packet->data[packet->length]
+ *
+ * Returns false on error, true with *out == NULL on EOF
  */
-struct relay_packet *io_intf_recv(struct io_intf *inst);
+bool io_intf_recv(struct io_intf *inst, struct relay_packet **out);
 
 /* Handle the next message (using the given list of handlers) */
 bool io_intf_handle(struct io_intf *inst, const struct io_handler handlers[], size_t handler_count);
