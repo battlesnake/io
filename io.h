@@ -7,6 +7,7 @@
 #include <file/source.h>
 #include <file/sink.h>
 
+/* IO formats */
 enum io_format {
 	io_null = 0,
 	io_raw = 1,
@@ -14,9 +15,10 @@ enum io_format {
 	io_relay = 3
 };
 
-/* If USE_RAW is defined or fd is a regular file use fallback else use relay */
+/* If USE_RAW is defined or fd is a regular file, use fallback, else use relay */
 enum io_format try_relay(int fd, enum io_format fallback);
 
+/* Format to string to format to string */
 const char *io_format_str(enum io_format fmt);
 enum io_format io_format_val(const char *str);
 
@@ -69,6 +71,24 @@ struct io_handler {
 	void *arg;
 };
 
+/*
+ * local is the local name, used for authenticating against a relay server if
+ * output backend is a socket.  Also, incoming packets that are not addressed to
+ * this name (if it is not NULL) are silently forwarded on by
+ * io_intf_recv_relay.
+ *
+ * fi/fo may be NULL or file_{sink,source} backends for the interface to use.
+ * Despite the name, these just wrap file descriptors, and may refer to e.g.
+ * pipes, sockets instead of files.
+ *
+ * fmti, fmto are input and output data format specifiers.  The try_relay(fmt)
+ * function may be used to use relay format when possible and a fallback format
+ * for files.
+ *
+ * type_in is set in type field of packets received in non-relay format.
+ *
+ * type_out is set in outgoing packets with NULL type field.
+ */
 bool io_intf_init(struct io_intf *inst, const char *local, struct file_source *fi, struct file_sink *fo, enum io_format fmti, enum io_format fmto, const char *type_in, const char *type_out);
 
 /*
@@ -82,10 +102,15 @@ bool io_intf_recv(struct io_intf *inst, struct relay_packet **out);
 /* Handle the next message (using the given list of handlers) */
 bool io_intf_handle(struct io_intf *inst, const struct io_handler handlers[], size_t handler_count);
 
+/*
+ * Run a message loop, dispatching messages to the appropriate handler(s) via
+ * chain-of-command pattern.
+ */
 void io_intf_loop(struct io_intf *inst, const struct io_handler handlers[], size_t handler_count);
 
 bool io_intf_send(struct io_intf *inst, const char *type, const char *remote, const void *buf, const size_t length);
 
+/* Forward a received packet on to the output */
 bool io_intf_forward(struct io_intf *inst, const struct relay_packet *data);
 
 void io_intf_destroy(struct io_intf *inst);
