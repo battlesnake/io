@@ -175,7 +175,7 @@ static bool io_intf_recv_relay(struct io_intf *inst, struct relay_packet **out)
 		if (packet == NULL) {
 			return true;
 		}
-		if (inst->local == NULL || strcmp(inst->local, packet->local) == 0) {
+		if (inst->local == NULL || strlen(packet->local) == 0 || strcmp(inst->local, packet->local) == 0) {
 			*out = packet;
 			return true;
 		}
@@ -258,6 +258,7 @@ void io_intf_destroy(struct io_intf *inst)
 	relay_client_destroy(&inst->ro);
 }
 
+#include <debug/hexdump.h>
 static enum io_handler_result handle_packet(struct io_intf *inst, const struct relay_packet *rp, const struct io_handler *begin, const struct io_handler *end)
 {
 	if (!streq_w(inst->local, rp->local)) {
