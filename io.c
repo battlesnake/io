@@ -48,21 +48,6 @@ enum io_format io_format_val(const char *str)
 	}
 }
 
-static bool set_nonblock(int fd)
-{
-	int fl = fcntl(fd, F_GETFL);
-	if (fl < 0) {
-		log_sysfail("fcntl", "F_GETFL, %d", fd);
-		return false;
-	}
-	fl |= O_NONBLOCK;
-	if (fcntl(fd, F_SETFL, fl) == -1) {
-		log_sysfail("fcntl", "F_SETFL, %d, 0x%x", fd, fl);
-		return false;
-	}
-	return true;
-}
-
 bool io_intf_init(struct io_intf *inst, const char *local, struct file_source *fi, struct file_sink *fo, enum io_format fmti, enum io_format fmto, const char *type_in, const char *type_out)
 {
 	memset(inst, 0, sizeof(*inst));
@@ -92,20 +77,12 @@ bool io_intf_init(struct io_intf *inst, const char *local, struct file_source *f
 		auth = S_ISSOCK(inst->so.st_mode);
 	}
 	if (fo) {
-		if (!set_nonblock(fo->fd)) {
-			log_error("Failed to configure fd%d to nonblocking mode (%d)", fo->fd, errno);
-			goto fail;
-		}
 		if (fmto == io_relay && !relay_client_init_fd(&inst->ro, local, fo->fd, fo->owns, auth)) {
 			log_error("Failed to open fd%d in %s output mode for type %s", fo->fd, io_format_str(fmto), type_out);
 			goto fail;
 		}
 	}
 	if (fi) {
-		if (!set_nonblock(fi->fd)) {
-			log_error("Failed to configure fd%d to nonblocking mode (%d)", fi->fd, errno);
-			goto fail;
-		}
 		if (fmti == io_relay && !relay_client_init_fd(&inst->ri, local, fi->fd, fi->owns, false)) {
 			log_error("Failed to open fd%d in %s input mode for type %s", fi->fd, io_format_str(fmti), type_in);
 			goto fail;
